@@ -1,5 +1,7 @@
 from httpx import AsyncClient
 import asyncio
+from loguru import logger
+
 # from werkzeug.contrib.cache import SimpleCache
 # cache = SimpleCache()
 
@@ -72,11 +74,17 @@ class CovalentAPIClient:
         urls = [portfolio_url, transactions_url, token_balances_url]
         # TODO: failed request retry
         responses = await asyncio.gather(*map(self.__get_request_async, urls))
-        is_success = responses[0].status_code==200 and responses[1].status_code==200 and responses[2].status_code==200
+
+        status_codes = [responses[0].status_code, responses[1].status_code, responses[2].status_code]
+        is_not_exist = status_codes[0]== 400 and status_codes[1] == 400 and status_codes[2] == 400
+        if is_not_exist:
+            return {'balance': []}
+
+        is_success = status_codes[0]==200 and status_codes[1]==200 and status_codes[2]==200
         if not is_success:
             return {'error': 1}
 
-        portfolio, transactions, token_balances      = responses[0].json(), responses[1].json(), responses[2].json()
+        portfolio, transactions, token_balances = responses[0].json(), responses[1].json(), responses[2].json()
 
         transaction_items = transactions['data'].get('items', [])
         response['transactions'] = self.__parse_transcation(transaction_items)
@@ -156,11 +164,11 @@ class CovalentAPIClient:
         return included_items, total_balance, excluded_items
 
     async def log_request(self, request):
-        print(f"Request event hook: {request.method} {request.url} - Waiting for response")
+        logger.info(f"Request event hook: {request.method} {request.url} - Waiting for response")
 
     async def log_response(self, response):
         request = response.request
-        print(f"Response event hook: {request.method} {request.url} - Status {response.status_code}")
+        logger.info(f"Response event hook: {request.method} {request.url} - Status {response.status_code}")
 
     def __parse_transcation(self, items):
         response = []
