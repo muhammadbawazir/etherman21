@@ -66,7 +66,7 @@ class CovalentAPIClient:
         currency_key = self.CURRENCY_TO_SIGN.get(currency)
         response['currency'] = CS.get_symbol(currency_key)
 
-        query_param = {'quote-currency': currency}
+        query_param = {'quote-currency': currency_key}
         token_balances_url = self.get_token_balances_url(chain_id, address, query_param)
         transactions_url = self.get_transactions_url(chain_id, address, query_param)
         portfolio_url = self.get_portfolio(chain_id, address, query_param)
