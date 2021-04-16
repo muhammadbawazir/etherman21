@@ -1,4 +1,3 @@
-import os
 from flask import Flask, request
 import json
 
@@ -25,5 +24,4 @@ def home():
     return json.dumps(response)
 
 if __name__=='__main__':
-    port = int(os.environ.get('port', 33507))
-    app.run(port=port)
+    app.run()
