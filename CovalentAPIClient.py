@@ -51,13 +51,17 @@ class CovalentAPIClient:
                }
 
     CURRENCY_TO_SIGN = {'usd' : 'USD', 'eur': 'EUR', 'jpy': 'JPY'}
+    HEADER ={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5)\
+            AppleWebKit/537.36 (KHTML, like Gecko) Cafari/537.36'}
 
     async def get_all(self, chain_id, address, currency='usd'):
         response = {}
+
         currency = currency.lower()
-        currency_key = self.CURRENCY_TO_SIGN.get(currency, None)
-        if not currency_key:
-            return 'currency is not included'
+        is_currency_included = self.CURRENCY_TO_SIGN.get(currency, False)
+        if not is_currency_included:
+            currency = 'usd'
+        currency_key = self.CURRENCY_TO_SIGN.get(currency)
         response['currency'] = CS.get_symbol(currency_key)
 
         query_param = {'quote-currency': currency}
@@ -65,16 +69,20 @@ class CovalentAPIClient:
         transactions_url = self.get_transactions_url(chain_id, address, query_param)
         portfolio_url = self.get_portfolio(chain_id, address, query_param)
 
-        urls = [token_balances_url, transactions_url, portfolio_url]
+        urls = [portfolio_url, transactions_url, token_balances_url]
         # TODO: failed request retry
         responses = await asyncio.gather(*map(self.__get_request_async, urls))
-        token_balances, transactions, portfolio = responses[0].json(), responses[1].json(), responses[2].json()
+        is_success = responses[0].status_code==200 and responses[1].status_code==200 and responses[2].status_code==200
+        if not is_success:
+            return {'error': 1}
+
+        portfolio, transactions, token_balances      = responses[0].json(), responses[1].json(), responses[2].json()
 
         transaction_items = transactions['data'].get('items', [])
         response['transactions'] = self.__parse_transcation(transaction_items)
 
         portfolio_response = []
-        for item in portfolio['items']:
+        for item in portfolio.get('items', []):
             entity = {'contract_name': item['contract_name'], 'data': []}
             contract_decimal = item['contract_decimals']
 
@@ -87,42 +95,17 @@ class CovalentAPIClient:
 
         token_balances_items = token_balances['data'].get('items', {})
         if token_balances_items:
-            # # request and map erc20transaction for each contract_address
-            # response['erc20transaction'] = []
-            # temp = {'urls' : []}
-            # for batch in self.__parse(token_balances_items, fields_to_extract=['contract_address'], exclude_type='nft', batch_size = 3):
-            #     # TODO: failed request pooling and retry
-            #     urls = []
-            #     for node in batch:
-            #         query_param['contract-address'] = node['contract_address']
-            #         urls.append(self.get_erc20_token_transfer_url(chain_id, address, query_param))
-            #     batch_response = await asyncio.gather(*map(self.__get_request_async, urls))
-            #     temp['urls'] += urls
-            #     for idx in range(len(batch)):
-            #         entity = {'contract_address': batch[idx]['contract_address'],
-            #                   'items': batch_response[idx].json()['data'].get('items', [])}
-            #
-            #         response['erc20transaction'].append(entity)
-
-            # get all_balance
-            response['balance'], response['all_balance'], response['nft'] = self.__items_and_sum_balances(token_balances_items, transform=True, exclude_type=['nft'])
+            response['balance'], response['all_balance'], response['nft'] = self.__items_and_sum_balances(token_balances_items, exclude_type=['nft'])
         else:
-            response['all_balance'] = None
-            response['erc20transaction'] = {}
+            response['all_balance'] = 0
             response['nft'] = []
             return response
 
-        # TODO: seperate balance_token_transaction into 'nft' and 'other'
-
-        with open('ex_response.json', 'w') as f:
-            json.dump(response, f)
-        # with open('erc20.json', 'w') as f:
-        #     json.dump(temp, f)
         return response
 
     async def __get_request_async(self, url):
         async with AsyncClient(event_hooks={'request': [self.log_request], 'response': [self.log_response]}, timeout=30) as client:
-            return await client.get(url)
+            return await client.get(url, headers=self.HEADER)
 
     def get_token_balances_url(self, chain_id, address, query_param=None): # query_param currency
         end_point = self.ENDPOINTS['base'] + self.ENDPOINTS['token_balances'].format(chain_id=chain_id,
@@ -148,14 +131,6 @@ class CovalentAPIClient:
 
         return end_point
 
-    # def get_erc20_token_transfer_url(self, chain_id, address, query_param=None): # query_param contract address, currency
-    #     end_point = self.ENDPOINTS['base'] + self.ENDPOINTS['erc20_token'].format(chain_id=chain_id,
-    #                                                                               address=address)
-    #     if query_param:
-    #         end_point += '?' + self.__make_query_string(query_param)
-    #
-    #     return end_point
-
     def __make_query_string(self, query_param):
         query = []
         for key, value in query_param.items():
@@ -164,7 +139,7 @@ class CovalentAPIClient:
 
         return query
 
-    def __items_and_sum_balances(self, items, transform=False, exclude_type=None):
+    def __items_and_sum_balances(self, items, exclude_type=None):
         if not exclude_type:
             exclude_type = []
 
@@ -179,21 +154,6 @@ class CovalentAPIClient:
             included_items.append(item)
 
         return included_items, total_balance, excluded_items
-
-    # def __parse(self, data, fields_to_extract, exclude_type=None, batch_size=10):
-    #     batch =  []
-    #     for item in data:
-    #         if item['type'] in exclude_type:
-    #             continue
-    #         if len(batch)==batch_size:
-    #             yield batch
-    #             batch = []
-    #
-    #         node = {key: item[key] for key in fields_to_extract}
-    #         batch.append(node)
-    #
-    #     if batch:
-    #         yield batch
 
     async def log_request(self, request):
         print(f"Request event hook: {request.method} {request.url} - Waiting for response")
@@ -218,8 +178,6 @@ class CovalentAPIClient:
             response.append(entity)
 
         return response
-
-
 
 # if __name__ == '__main__':
 #     loop = asyncio.get_event_loop()

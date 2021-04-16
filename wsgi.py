@@ -1,3 +1,4 @@
+import os
 from flask import Flask, request
 import json
 
@@ -5,17 +6,18 @@ from CovalentAPIClient import CovalentAPIClient
 import asyncio
 
 app = Flask(__name__)
-loop = asyncio.get_event_loop()
 
 @app.route('/get_all/<chain_id>/<address>', methods=['GET'])
 def get_all(chain_id=None, address=None):
+    loop = asyncio.new_event_loop()
     if not chain_id or not address:
-        return json.dumps({})
+        return json.dumps({'balance': []})
+
     currency = request.args.get('currency', 'usd')
 
     api = CovalentAPIClient()
-
     response = loop.run_until_complete(api.get_all(chain_id, address, currency=currency))
+
     return json.dumps(response)
 
 @app.route('/', methods=['GET'])
@@ -24,4 +26,4 @@ def home():
     return json.dumps(response)
 
 if __name__=='__main__':
-    app.run()
+    app.run(debug=True)
