@@ -64,6 +64,9 @@ def create_balance_csv(chain_id, address):
     api = CovalentAPIClient()
     csv_file = loop.run_until_complete(api.get_balance_csv(chain_id, address))
 
+    if not csv_file:
+        return json.dumps({'error': 1})
+
     response = make_response(csv_file)
     response.headers["Content-Disposition"] = "attachment; filename=balances_{}_{}.csv".format(chain_id, address)
     response.headers["Content-Type"] = "text/csv"
@@ -73,11 +76,14 @@ def create_balance_csv(chain_id, address):
 @app.route('/transactions_csv/<chain_id>/<address>', methods=['GET'])
 def create_transactions_csv(chain_id, address):
     if not chain_id or not address:
-        return json.dumps({'transactions': []})
+        return json.dumps({'error': 1})
     loop = asyncio.new_event_loop()
 
     api = CovalentAPIClient()
     csv_file = loop.run_until_complete(api.get_transactions_csv(chain_id, address))
+
+    if not csv_file:
+        return json.dumps({'error': 1})
 
     response = make_response(csv_file)
     response.headers["Content-Disposition"] = "attachment; filename=transactions_{}_{}.csv".format(chain_id, address)
@@ -106,4 +112,4 @@ def get_redis_keys(chain_id, address, currency):
     return ':'.join([chain_id, address, currency]), ':'.join([chain_id, address, currency, 'time'])
 
 if __name__=='__main__':
-    app.run(debug=True)
+    app.run()

@@ -174,7 +174,7 @@ class CovalentAPIClient:
         request = response.request
         logger.info(f"Response event hook: {request.method} {request.url} - Status {response.status_code}")
 
-    def __parse_transcation(self, items):
+    def __parse_transcation(self, items, raw=False):
         response = []
         if not items:
             return response
@@ -184,9 +184,13 @@ class CovalentAPIClient:
             if is_included.get(item['tx_hash'], False):
                 continue
 
-            entity = {'block_signet_at': item['block_signed_at'], 'tx_hash': item['tx_hash'],
-                      'from_address': item['from_address'], 'to_address': item['to_address'],
-                      'successful': item['successful']}
+            if not raw:
+                entity = {'block_signet_at': item['block_signed_at'], 'tx_hash': item['tx_hash'],
+                          'from_address': item['from_address'], 'to_address': item['to_address'],
+                          'successful': item['successful']}
+            else:
+                entity = item
+
             response.append(entity)
 
         return response
@@ -208,11 +212,11 @@ class CovalentAPIClient:
         status_code = responses[0].status_code
         is_not_exist = status_code == 400
         if is_not_exist:
-            return {'balance': []}
+            return False
 
         is_success = status_code==200
         if not is_success:
-            return {'error': 1}
+            return False
 
         token_balances = responses[0].json()
 
@@ -232,21 +236,21 @@ class CovalentAPIClient:
         status_code = responses[0].status_code
         is_not_exist = status_code == 400
         if is_not_exist:
-            return {'transactions': []}
+            return False
 
         is_success = status_code==200
         if not is_success:
-            return {'error': 1}
+            return False
 
-        token_balances = responses[0].json()
+        transactions = responses[0].json()
 
-        token_balances_items = token_balances['data'].get('items', {})
-        if token_balances_items:
-            filtered_items = self.__parse_balances(token_balances_items, exclude_type=['nft'])
+        transactions_items = transactions['data'].get('items', {})
+        if transactions_items:
+            items = self.__parse_transcation(transactions_items, raw=True)
         else:
             return {"error": "items empty"}
 
-        data = pd.DataFrame(filtered_items)
+        data = pd.DataFrame(items)
         return data.to_csv(index=False)
 
     def __parse_balances(self, items, exclude_type=None):
