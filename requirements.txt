@@ -7,6 +7,7 @@ chardet==3.0.4
 click==7.1.2
 currency-symbols==2.0.0
 Flask==1.1.2
+Flask-Cors==3.0.10
 gevent==21.1.2
 greenlet==1.0.0
 grequests==0.6.0
@@ -28,6 +29,7 @@ multidict==5.1.0
 requests==2.25.1
 requests-async==0.6.2
 rfc3986==1.4.0
+six==1.15.0
 sniffio==1.2.0
 typing-extensions==3.7.4.3
 urllib3==1.26.4

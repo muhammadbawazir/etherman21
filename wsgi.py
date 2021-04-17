@@ -1,11 +1,14 @@
 import os
 from flask import Flask, request
+from flask_cors import CORS
+from loguru import logger
 import json
 
 from CovalentAPIClient import CovalentAPIClient
 import asyncio
 
 app = Flask(__name__)
+CORS(app)
 
 @app.route('/get_all/<chain_id>/<address>', methods=['GET'])
 def get_all(chain_id=None, address=None):
