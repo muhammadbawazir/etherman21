@@ -97,6 +97,9 @@ class CovalentAPIClient:
 
                 entity['date_converted'].append(date_converted)
 
+            entity['data'].reverse()
+            entity['date_converted'].reverse()
+
             portfolio_response.append(entity)
 
         response['portfolio'] = portfolio_response
