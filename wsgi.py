@@ -50,7 +50,7 @@ def get_all(chain_id=None, address=None):
 
 @app.route('/', methods=['GET'])
 def home():
-    response = {'text': 'temporary up'}
+    response = {'text': 'tott!!!'}
     return json.dumps(response)
 
 @app.route('/balance_csv/<chain_id>/<address>', methods=['GET'])
