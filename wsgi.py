@@ -21,7 +21,7 @@ def get_all(chain_id=None, address=None):
     api = CovalentAPIClient()
     response = loop.run_until_complete(api.get_all(chain_id, address, currency=currency))
 
-    return json.dumps(response)
+    return json.dumps(response, ensure_ascii=False)
 
 @app.route('/', methods=['GET'])
 def home():
