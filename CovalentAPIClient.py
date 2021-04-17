@@ -52,6 +52,9 @@ class CovalentAPIClient:
     HEADER ={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5)\
             AppleWebKit/537.36 (KHTML, like Gecko) Cafari/537.36'}
 
+    NUM_TO_MONTH = {'01': 'Jan', '02': 'Feb', '03': 'Mar', '04': 'Apr', '05': 'May', '06': 'Jun', '07': 'Jul',
+                    '08': 'Aug', '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Dec'}
+
     async def get_all(self, chain_id, address, currency='usd'):
         response = {}
 
@@ -81,11 +84,18 @@ class CovalentAPIClient:
 
         portfolio_response = []
         for item in portfolio.get('items', []):
-            entity = {'contract_name': item['contract_name'], 'data': []}
+            entity = {'contract_name': item['contract_name'], 'data': [], 'date_converted': []}
             contract_decimal = item['contract_decimals']
 
             for balances in item['holdings']:
                 entity['data'].append(round(float(balances['close']['balance']) / (pow(10, contract_decimal)), 4))
+                date_converted = '-'
+                if balances["timestamp"]:
+                    date_converted = balances["timestamp"][5:10].split('-')
+                    date_converted[0] = self.NUM_TO_MONTH.get(date_converted[0], 'None')
+                    date_converted = ' '.join(date_converted)
+
+                entity['date_converted'].append(date_converted)
 
             portfolio_response.append(entity)
 
