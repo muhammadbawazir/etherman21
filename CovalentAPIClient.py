@@ -59,13 +59,7 @@ class CovalentAPIClient:
     async def get_all(self, chain_id, address, currency='usd'):
         response = {}
 
-        currency = currency.lower()
-        is_currency_included = self.CURRENCY_TO_SIGN.get(currency, False)
-        if not is_currency_included:
-            currency = 'usd'
-        currency_key = self.CURRENCY_TO_SIGN.get(currency)
-        response['currency'] = CS.get_symbol(currency_key)
-
+        currency_key, response['currency'] = self.get_currency(currency)
         query_param = {'quote-currency': currency_key}
         token_balances_url = self.get_token_balances_url(chain_id, address, query_param)
         transactions_url = self.get_transactions_url(chain_id, address, query_param)
@@ -186,6 +180,16 @@ class CovalentAPIClient:
             response.append(entity)
 
         return response
+
+    def get_currency(self, currency):
+        currency = currency.lower()
+        is_currency_included = self.CURRENCY_TO_SIGN.get(currency, False)
+        if not is_currency_included:
+            currency = 'usd'
+        currency_key = self.CURRENCY_TO_SIGN.get(currency)
+        currency_symbol = CS.get_symbol(currency_key)
+
+        return currency_key, currency_symbol
 
 # if __name__ == '__main__':
 #     loop = asyncio.get_event_loop()
