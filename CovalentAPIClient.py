@@ -1,12 +1,7 @@
 from httpx import AsyncClient
 import asyncio
+
 from loguru import logger
-
-# from werkzeug.contrib.cache import SimpleCache
-# cache = SimpleCache()
-
-import json
-import locale
 from currency_symbols import CurrencySymbols as CS
 
 # from erc20_worker import ERC20_Worker
@@ -89,7 +84,7 @@ class CovalentAPIClient:
             contract_decimal = item['contract_decimals']
 
             for balances in item['holdings']:
-                entity['data'].append( (int(balances['close']['balance']) / (pow(10, contract_decimal)) ))
+                entity['data'].append(round(float(balances['close']['balance']) / (pow(10, contract_decimal)), 4))
 
             portfolio_response.append(entity)
 
@@ -152,7 +147,7 @@ class CovalentAPIClient:
                 continue
 
             total_balance += item['quote']
-            item['balance_converted'] ='{:.4f}'.format( round(int(item['balance']) / pow(10, item['contract_decimals']), ) )
+            item['balance_converted'] ='{:.4f}'.format( round(float(item['balance']) / pow(10, item['contract_decimals']), 4) )
             included_items.append(item)
 
         return included_items, total_balance, excluded_items
