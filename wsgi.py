@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request
+from flask import Flask, request, make_response
 from flask_caching import Cache
 from flask_cors import CORS
 
@@ -12,8 +12,8 @@ import time
 from CovalentAPIClient import CovalentAPIClient
 
 
-config = {
-    "CACHE_TYPE": "SimpleCache",  # Flask-Caching related configs
+config = { # Flask-Caching related configs
+    "CACHE_TYPE": "SimpleCache",
     "CACHE_THRESHOLD": 20,
     "CACHE_DEFAULT_TIMEOUT": 300
 }
@@ -52,6 +52,22 @@ def get_all(chain_id=None, address=None):
 def home():
     response = {'text': 'temporary up'}
     return json.dumps(response)
+
+@app.route('/balance_csv/<chain_id>/<address>', methods=['GET'])
+def create_balance_csv(chain_id, address):
+    if not chain_id or not address:
+        return json.dumps({'balance': []})
+    loop = asyncio.new_event_loop()
+
+    api = CovalentAPIClient()
+    csv_file = loop.run_until_complete(api.get_balance_csv(chain_id, address))
+
+    response = make_response(csv_file)
+    response.headers["Content-Disposition"] = "attachment; filename={}_{}.csv".format(chain_id, address)
+    response.headers["Content-Type"] = "text/csv"
+
+    return response
+
 
 def update_cache(chain_id, address, currency='usd'):
     key, latest_updated = get_redis_keys(chain_id, address)

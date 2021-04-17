@@ -27,6 +27,10 @@ jsonify==0.5
 loguru==0.5.3
 MarkupSafe==1.1.1
 multidict==5.1.0
+numpy==1.20.2
+pandas==1.2.4
+python-dateutil==2.8.1
+pytz==2021.1
 requests==2.25.1
 requests-async==0.6.2
 rfc3986==1.4.0

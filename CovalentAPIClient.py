@@ -3,6 +3,7 @@ import asyncio
 
 from loguru import logger
 from currency_symbols import CurrencySymbols as CS
+import pandas as pd
 
 # from erc20_worker import ERC20_Worker
 """
@@ -185,6 +186,45 @@ class CovalentAPIClient:
         currency_symbol = CS.get_symbol(currency_key)
 
         return currency_key, currency_symbol
+
+    async def get_balance_csv(self, chain_id, address):
+        token_balances_url = self.get_token_balances_url(chain_id, address)
+        responses = await asyncio.gather(*map(self.__get_request_async, [token_balances_url]))
+
+        status_code = responses[0].status_code
+        is_not_exist = status_code == 400
+        if is_not_exist:
+            return {'balance': []}
+
+        is_success = status_code==200
+        if not is_success:
+            return {'error': 1}
+
+        token_balances = responses[0].json()
+
+        token_balances_items = token_balances['data'].get('items', {})
+        if token_balances_items:
+            filtered_items = self.__parse_balances(token_balances_items, exclude_type=['nft'])
+        else:
+            return {"error": "items empty"}
+
+        data = pd.DataFrame(filtered_items)
+        return data.to_csv(index=False)
+
+    def __parse_balances(self, items, exclude_type=None):
+        if not exclude_type:
+            exclude_type = []
+
+        included_items = []
+        for item in items:
+            if item['type'] in exclude_type:
+                continue
+
+            item.pop('nft_data')
+            included_items.append(item)
+
+        return included_items
+
 
 # if __name__ == '__main__':
 #     loop = asyncio.get_event_loop()
