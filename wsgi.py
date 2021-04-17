@@ -31,13 +31,15 @@ def get_all(chain_id=None, address=None):
     loop = asyncio.new_event_loop()
 
     currency = request.args.get('currency', 'usd')
-    api = CovalentAPIClient()
 
-    key , latest_update_key = get_redis_keys(chain_id, address)
+    api = CovalentAPIClient()
+    currency_key, symbol = api.get_currency(currency)
+
+    key, latest_update_key = get_redis_keys(chain_id, address, currency_key)
     response = cache.get(key)
     if response:
-        _, response['currency'] = api.get_currency(currency)
-        thread = Thread(target=update_cache, args=(chain_id, address))
+        response['currency'] = symbol
+        thread = Thread(target=update_cache, args=(chain_id, address, currency_key))
         thread.daemon = True
         thread.start()
     else:
@@ -63,14 +65,28 @@ def create_balance_csv(chain_id, address):
     csv_file = loop.run_until_complete(api.get_balance_csv(chain_id, address))
 
     response = make_response(csv_file)
-    response.headers["Content-Disposition"] = "attachment; filename={}_{}.csv".format(chain_id, address)
+    response.headers["Content-Disposition"] = "attachment; filename=balances_{}_{}.csv".format(chain_id, address)
     response.headers["Content-Type"] = "text/csv"
 
     return response
 
+@app.route('/transactions_csv/<chain_id>/<address>', methods=['GET'])
+def create_transactions_csv(chain_id, address):
+    if not chain_id or not address:
+        return json.dumps({'transactions': []})
+    loop = asyncio.new_event_loop()
 
-def update_cache(chain_id, address, currency='usd'):
-    key, latest_updated = get_redis_keys(chain_id, address)
+    api = CovalentAPIClient()
+    csv_file = loop.run_until_complete(api.get_transactions_csv(chain_id, address))
+
+    response = make_response(csv_file)
+    response.headers["Content-Disposition"] = "attachment; filename=transactions_{}_{}.csv".format(chain_id, address)
+    response.headers["Content-Type"] = "text/csv"
+
+    return response
+
+def update_cache(chain_id, address, currency):
+    key, latest_updated = get_redis_keys(chain_id, address, currency)
 
     logger.info("updating cache for key: {}".format(key))
     if time.time() - cache.get(latest_updated) > 60.0:
@@ -86,8 +102,8 @@ def update_cache(chain_id, address, currency='usd'):
 
     logger.info("update cache for key: {} done".format(key))
 
-def get_redis_keys(chain_id, address):
-    return ':'.join([chain_id, address]), ':'.join([chain_id, address, 'time'])
+def get_redis_keys(chain_id, address, currency):
+    return ':'.join([chain_id, address, currency]), ':'.join([chain_id, address, currency, 'time'])
 
 if __name__=='__main__':
     app.run(debug=True)

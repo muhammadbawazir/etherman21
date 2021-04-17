@@ -115,11 +115,15 @@ class CovalentAPIClient:
         async with AsyncClient(event_hooks={'request': [self.log_request], 'response': [self.log_response]}, timeout=30) as client:
             return await client.get(url, headers=self.HEADER)
 
-    def get_token_balances_url(self, chain_id, address, query_param=None): # query_param currency
+    def get_token_balances_url(self, chain_id, address, query_param=None, nft=True): # query_param currency
         end_point = self.ENDPOINTS['base'] + self.ENDPOINTS['token_balances'].format(chain_id=chain_id,
                                                                                      address=address)
+        if nft:
+            query_param['nft'] = True
+
         if query_param:
             end_point += '?' + self.__make_query_string(query_param)
+            query_param.pop('nft')
 
         return end_point
 
@@ -198,13 +202,37 @@ class CovalentAPIClient:
         return currency_key, currency_symbol
 
     async def get_balance_csv(self, chain_id, address):
-        token_balances_url = self.get_token_balances_url(chain_id, address)
+        token_balances_url = self.get_token_balances_url(chain_id, address, nft=False)
         responses = await asyncio.gather(*map(self.__get_request_async, [token_balances_url]))
 
         status_code = responses[0].status_code
         is_not_exist = status_code == 400
         if is_not_exist:
             return {'balance': []}
+
+        is_success = status_code==200
+        if not is_success:
+            return {'error': 1}
+
+        token_balances = responses[0].json()
+
+        token_balances_items = token_balances['data'].get('items', {})
+        if token_balances_items:
+            filtered_items = self.__parse_balances(token_balances_items, exclude_type=['nft'])
+        else:
+            return {"error": "items empty"}
+
+        data = pd.DataFrame(filtered_items)
+        return data.to_csv(index=False)
+
+    async def get_transactions_csv(self, chain_id, address):
+        transactions_url = self.get_transactions_url(chain_id, address)
+        responses = await asyncio.gather(*map(self.__get_request_async, [transactions_url]))
+
+        status_code = responses[0].status_code
+        is_not_exist = status_code == 400
+        if is_not_exist:
+            return {'transactions': []}
 
         is_success = status_code==200
         if not is_success:
