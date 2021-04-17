@@ -184,12 +184,9 @@ class CovalentAPIClient:
             if is_included.get(item['tx_hash'], False):
                 continue
 
-            if not raw:
-                entity = {'block_signet_at': item['block_signed_at'], 'tx_hash': item['tx_hash'],
+            entity = {'block_signet_at': item['block_signed_at'], 'tx_hash': item['tx_hash'],
                           'from_address': item['from_address'], 'to_address': item['to_address'],
                           'successful': item['successful']}
-            else:
-                entity = item
 
             response.append(entity)
 
@@ -246,12 +243,27 @@ class CovalentAPIClient:
 
         transactions_items = transactions['data'].get('items', {})
         if transactions_items:
-            items = self.__parse_transcation(transactions_items, raw=True)
+            items = self.__parse_transaction_csv(transactions_items)
         else:
             return {"error": "items empty"}
 
         data = pd.DataFrame(items)
         return data.to_csv(index=False)
+
+    def __parse_transaction_csv(self, items):
+        data = []
+        for item in items:
+            entity = item
+
+            log_events = entity.pop('log_events', [])
+            count_log_event = 1
+            while log_events:
+                entity['log_event_{}'.format(count_log_event)] = log_events.pop(0)
+                count_log_event+= 1
+
+            data.append(entity)
+
+        return data
 
     def __parse_balances(self, items, exclude_type=None):
         if not exclude_type:

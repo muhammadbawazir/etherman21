@@ -38,7 +38,6 @@ def get_all(chain_id=None, address=None):
     key, latest_update_key = get_redis_keys(chain_id, address, currency_key)
     response = cache.get(key)
     if response:
-        response['currency'] = symbol
         thread = Thread(target=update_cache, args=(chain_id, address, currency_key))
         thread.daemon = True
         thread.start()
@@ -95,7 +94,7 @@ def update_cache(chain_id, address, currency):
     key, latest_updated = get_redis_keys(chain_id, address, currency)
 
     logger.info("updating cache for key: {}".format(key))
-    if time.time() - cache.get(latest_updated) > 60.0:
+    if time.time() - cache.get(latest_updated) > 120.0:
         loop = asyncio.new_event_loop()
 
         api = CovalentAPIClient()
