@@ -1,10 +1,11 @@
 import os
-from flask import Flask, request, make_response
+from flask import Flask, request, make_response, redirect
 from flask_caching import Cache
 from flask_cors import CORS
 
 import asyncio
 from threading import Thread
+import requests
 from loguru import logger
 
 import json
@@ -51,8 +52,12 @@ def get_all(chain_id=None, address=None):
 
 @app.route('/', methods=['GET'])
 def home():
-    response = {'text': 'tott!!!'}
-    return json.dumps(response)
+    while True:
+        response = requests.get('https://avax-wallet-checker.herokuapp.com/')
+        if response.status_code==200:
+            break
+
+    return redirect('https://avax-wallet-checker.herokuapp.com/', code=302)
 
 @app.route('/balance_csv/<chain_id>/<address>', methods=['GET'])
 def create_balance_csv(chain_id, address):
