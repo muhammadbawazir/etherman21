@@ -282,6 +282,13 @@ class CovalentAPIClient:
 
         return included_items
 
+    def convert_json_to_csv(self, items):
+        data = []
+        for item in items:
+            data.append(item)
+
+        df = pd.DataFrame(data)
+        return df.to_csv(index=False)
 
 # if __name__ == '__main__':
 #     loop = asyncio.get_event_loop()

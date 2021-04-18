@@ -90,6 +90,22 @@ def create_transactions_csv(chain_id, address):
 
     return response
 
+@app.route('/json_to_csv', methods=['GET'])
+def json_to_csv():
+    data = request.args.get('data', [])
+    data = data.replace('\'', '\"')
+    data = json.loads(data)
+    logger.info("received {} from json_to_csv request".format(data))
+
+    api = CovalentAPIClient()
+    csv_file = api.convert_json_to_csv(data)
+
+    response = make_response(csv_file)
+    response.headers["Content-Disposition"] = "attachment; filename=erc.csv"
+    response.headers["Content-Type"] = "text/csv"
+
+    return response
+
 def update_cache(chain_id, address, currency):
     key, latest_updated = get_redis_keys(chain_id, address, currency)
 
