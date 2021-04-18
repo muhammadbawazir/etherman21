@@ -90,19 +90,21 @@ def create_transactions_csv(chain_id, address):
 
     return response
 
-@app.route('/json_to_csv', methods=['GET'])
-def json_to_csv():
-    data = request.args.get('data', [])
-    data = data.replace('\'', '\"')
-    data = json.loads(data)
-    logger.info("received {} from json_to_csv request".format(data))
+@app.route('/erc_csv/<chain_id>/<address>/<contract_address>', methods=['GET'])
+def erc_csv(chain_id, address, contract_address):
+    if not chain_id or not address or not contract_address:
+        return json.dumps({'error': 1})
+    loop = asyncio.new_event_loop()
 
     api = CovalentAPIClient()
-    items = data.get('items', [])
-    csv_file = api.convert_json_to_csv(items)
+    csv_file = loop.run_until_complete(api.get_erc_csv(chain_id, address, contract_address))
+
+    if not csv_file:
+        return json.dumps({'error': 1})
 
     response = make_response(csv_file)
-    response.headers["Content-Disposition"] = "attachment; filename=erc.csv"
+    response.headers["Content-Disposition"] = "attachment; filename=ercTransaction_{}_{}_{}.csv".format(chain_id, address,
+                                                                                             contract_address)
     response.headers["Content-Type"] = "text/csv"
 
     return response

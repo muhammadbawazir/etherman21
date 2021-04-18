@@ -220,7 +220,7 @@ class CovalentAPIClient:
 
         token_balances = responses[0].json()
 
-        token_balances_items = token_balances['data'].get('items', {})
+        token_balances_items = token_balances['data'].get('items', [])
         if token_balances_items:
             filtered_items = self.__parse_balances(token_balances_items, exclude_type=['nft'])
         else:
@@ -244,7 +244,7 @@ class CovalentAPIClient:
 
         transactions = responses[0].json()
 
-        transactions_items = transactions['data'].get('items', {})
+        transactions_items = transactions['data'].get('items', [])
         if transactions_items:
             items = self.__parse_transaction_csv(transactions_items)
         else:
@@ -252,6 +252,50 @@ class CovalentAPIClient:
 
         data = pd.DataFrame(items)
         return data.to_csv(index=False)
+
+    async def get_erc_csv(self, chain_id, address, contract_address):
+        erc_url = self.get_erc20_url(chain_id, address, query_param={'contract-address':contract_address})
+
+        responses = await asyncio.gather(*map(self.__get_request_async, [erc_url]))
+
+        status_code = responses[0].status_code
+        is_not_exist = status_code == 400
+        if is_not_exist:
+            return False
+
+        is_success = status_code == 200
+        if not is_success:
+            return False
+
+        erc_response = responses[0].json()
+
+        erc_items = erc_response['data'].get('items', [])
+        if erc_items:
+            items = self.__parse_erc_csv(erc_items)
+        else:
+            return {"error": "items empty"}
+
+        data = pd.DataFrame(items)
+        return data.to_csv(index=False)
+
+
+    def get_erc20_url(self, chain_id, address, query_param=None):
+        end_point = self.ENDPOINTS['base'] + self.ENDPOINTS['erc20_token'].format(chain_id=chain_id,
+                                                                                     address=address)
+        if query_param:
+            end_point += '?' + self.__make_query_string(query_param)
+
+        return end_point
+
+    def __parse_erc_csv(self, items):
+        data = []
+        for item in items:
+            entity = item
+            entity.pop('transfers')
+
+            data.append(entity)
+
+        return data
 
     def __parse_transaction_csv(self, items):
         data = []
@@ -282,13 +326,6 @@ class CovalentAPIClient:
 
         return included_items
 
-    def convert_json_to_csv(self, items):
-        data = []
-        for item in items:
-            data.append(item)
-
-        df = pd.DataFrame(data)
-        return df.to_csv(index=False)
 
 # if __name__ == '__main__':
 #     loop = asyncio.get_event_loop()
