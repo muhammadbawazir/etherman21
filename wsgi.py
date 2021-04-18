@@ -98,7 +98,8 @@ def json_to_csv():
     logger.info("received {} from json_to_csv request".format(data))
 
     api = CovalentAPIClient()
-    csv_file = api.convert_json_to_csv(data)
+    items = data.get('items', [])
+    csv_file = api.convert_json_to_csv(items)
 
     response = make_response(csv_file)
     response.headers["Content-Disposition"] = "attachment; filename=erc.csv"
