@@ -73,7 +73,7 @@ class CovalentAPIClient:
         if is_not_exist:
             return {'balance': []}
 
-        is_success = status_codes[0]==200 and status_codes[1]==200 and status_codes[2]==200
+        is_success = status_codes[0]==200 or status_codes[1]==200 or status_codes[2]==200
         if not is_success:
             return {'error': 1}
 
